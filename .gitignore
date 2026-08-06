@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# Flutter / Dart
+frontend/.dart_tool/
+frontend/.idea/
+frontend/build/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/*.iml
+frontend/ios/Pods/
+frontend/ios/.symlinks/
+frontend/android/.gradle/
+frontend/android/local.properties
+
+# Supabase (local stack + secrets)
+backend/supabase/.branches/
+backend/supabase/.temp/
+.env
+.env.local
+
+# Secrets / keys — never commit
+*.env
+service_role*.txt
+
+# Firebase config (contains project API keys)
+frontend/android/app/google-services.json
+frontend/ios/Runner/GoogleService-Info.plist
