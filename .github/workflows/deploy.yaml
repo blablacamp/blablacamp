@@ -1,4 +1,5 @@
 name: Firebase Deploy Web
+run-name: Deploy web · ${{ github.ref_name }}
 
 # Builds the Flutter web app and publishes it to Firebase Hosting (blablacamp.com)
 # on every push to main.
