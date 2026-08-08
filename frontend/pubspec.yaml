@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   flutter_web_plugins:
     sdk: flutter
 
@@ -42,7 +44,7 @@ dependencies:
   go_router: ^17.4.0
   google_fonts: ^8.2.1
   flutter_svg: ^2.3.0
-  intl: ^0.20.3
+  intl: 0.20.2
   onesignal_flutter: ^5.6.7
   firebase_core: ^4.13.0
   firebase_crashlytics: ^5.2.7
