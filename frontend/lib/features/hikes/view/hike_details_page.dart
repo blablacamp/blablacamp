@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/moderation/report_sheet.dart';
@@ -548,7 +549,10 @@ class _OrganizerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _Panel(
-      child: Row(
+      child: InkWell(
+        onTap: () => context.push('/user/${hike.organizer.id}'),
+        borderRadius: AppShapes.leaf,
+        child: Row(
         children: [
           AvatarCircle(profile: hike.organizer, size: 56),
           const SizedBox(width: 16),
@@ -598,6 +602,7 @@ class _OrganizerCard extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }

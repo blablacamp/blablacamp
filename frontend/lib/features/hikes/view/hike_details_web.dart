@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/moderation/report_sheet.dart';
@@ -179,7 +180,10 @@ class _HikeDetailsWebPageState extends State<HikeDetailsWebPage> {
                 const SizedBox(height: 24),
                 _title(isShared ? 'Хто організовує' : 'Ваш гід'),
                 const SizedBox(height: 12),
-                Row(children: [
+                InkWell(
+                  onTap: () => context.push('/user/${hike.organizer.id}'),
+                  borderRadius: AppShapes.leaf,
+                  child: Row(children: [
                   AvatarCircle(profile: hike.organizer, size: 48),
                   const SizedBox(width: 14),
                   Column(
@@ -209,6 +213,7 @@ class _HikeDetailsWebPageState extends State<HikeDetailsWebPage> {
                     ],
                   ),
                 ]),
+                ),
                 if (_canReview) ...[
                   const SizedBox(height: 8),
                   TextButton.icon(

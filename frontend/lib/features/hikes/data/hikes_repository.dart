@@ -579,6 +579,24 @@ class HikesRepository {
         .toList();
   }
 
+  /// Public profile of any user (id, name, avatar, bio, default role).
+  Future<({ProfileRef profile, String? bio, String role})?> fetchProfile(
+      String userId) async {
+    final client = _client;
+    if (client == null) return null;
+    final row = await client
+        .from('profiles')
+        .select('id, display_name, avatar_url, bio, default_role')
+        .eq('id', userId)
+        .maybeSingle();
+    if (row == null) return null;
+    return (
+      profile: ProfileRef.fromMap(row),
+      bio: row['bio'] as String?,
+      role: (row['default_role'] as String?) ?? 'campmate',
+    );
+  }
+
   /// The current user's participation status for a hike, or null if none.
   /// One of: 'approved', 'pending', 'rejected'.
   Future<String?> fetchMyParticipation(String hikeId) async {

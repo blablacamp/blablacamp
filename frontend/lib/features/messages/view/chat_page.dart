@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -194,17 +195,28 @@ class _ChatViewState extends State<_ChatView> {
               Text('Поки лише ти.',
                   style: GoogleFonts.manrope(color: AppColors.textSecondary)),
             for (final p in members)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(children: [
-                  AvatarCircle(profile: p, size: 40),
-                  const SizedBox(width: 12),
-                  Text(p.displayName,
-                      style: GoogleFonts.manrope(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary)),
-                ]),
+              InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () {
+                  Navigator.pop(context);
+                  context.push('/user/${p.id}');
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(children: [
+                    AvatarCircle(profile: p, size: 40),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(p.displayName,
+                          style: GoogleFonts.manrope(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary)),
+                    ),
+                    const Icon(Icons.chevron_right,
+                        color: AppColors.textSecondary, size: 20),
+                  ]),
+                ),
               ),
           ],
         ),

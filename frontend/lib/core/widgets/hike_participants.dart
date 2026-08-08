@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../features/hikes/data/models/profile_ref.dart';
@@ -90,7 +91,10 @@ class _Person extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 64,
-      child: Column(
+      child: InkWell(
+        onTap: () => context.push('/user/${profile.id}'),
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
         children: [
           Stack(
             clipBehavior: Clip.none,
@@ -125,6 +129,7 @@ class _Person extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }

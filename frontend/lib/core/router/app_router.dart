@@ -18,6 +18,7 @@ import '../../features/messages/view/messages_page.dart';
 import '../../features/onboarding/view/intro_page.dart';
 import '../../features/onboarding/view/onboarding_page.dart';
 import '../../features/profile/view/profile_page.dart';
+import '../../features/profile/view/public_profile_page.dart';
 import '../../features/search/view/search_page.dart';
 import '../../features/search/view/search_web.dart';
 import '../../features/shell/home_shell.dart';
@@ -119,6 +120,11 @@ GoRouter createRouter(AuthRepository auth) {
         path: '/hike/:id',
         pageBuilder: (context, state) =>
             _page(state, HikeDetailsLoader(hikeId: state.pathParameters['id']!)),
+      ),
+      GoRoute(
+        path: '/user/:id',
+        pageBuilder: (context, state) =>
+            _page(state, PublicProfilePage(userId: state.pathParameters['id']!)),
       ),
       GoRoute(
         path: '/create-hike',
