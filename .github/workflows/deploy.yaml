@@ -1,4 +1,4 @@
-name: 🚀 Deploy Web
+name: Firebase Deploy Web
 
 # Builds the Flutter web app and publishes it to Firebase Hosting (blablacamp.com)
 # on every push to main.
@@ -9,7 +9,7 @@ on:
 
 jobs:
   deploy-web:
-    name: Build & Publish to blablacamp.com
+    name: Build & Deploy
     runs-on: ubuntu-latest
     defaults:
       run:
