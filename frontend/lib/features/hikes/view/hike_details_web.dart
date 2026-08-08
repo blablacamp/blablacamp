@@ -11,8 +11,10 @@ import '../../../core/web/widgets/web_chrome.dart';
 import '../../../core/widgets/avatar_circle.dart';
 import '../../../core/widgets/hike_cover.dart';
 import '../../../core/widgets/hike_participants.dart';
+import '../../../core/widgets/hike_route_map.dart';
 import '../../../core/widgets/star_rating.dart';
 import '../data/models/profile_ref.dart';
+import '../data/models/waypoint.dart';
 import '../../favorites/cubit/favorites_cubit.dart';
 import '../../messages/view/chat_page.dart';
 import '../data/hikes_repository.dart';
@@ -37,6 +39,7 @@ class _HikeDetailsWebPageState extends State<HikeDetailsWebPage> {
   bool _canReview = false;
   ({double average, int count}) _orgRating = (average: 0, count: 0);
   List<ProfileRef> _members = const [];
+  List<Waypoint> _waypoints = const [];
 
   @override
   void initState() {
@@ -51,6 +54,7 @@ class _HikeDetailsWebPageState extends State<HikeDetailsWebPage> {
     final canReview =
         await _repo.canReview(subjectId: hike.organizer.id, hikeId: hike.id);
     final members = await _repo.fetchApprovedParticipants(hike.id);
+    final waypoints = await _repo.fetchWaypoints(hike.id);
     if (!mounted) return;
     setState(() {
       _itinerary = days;
@@ -58,6 +62,7 @@ class _HikeDetailsWebPageState extends State<HikeDetailsWebPage> {
       _orgRating = rating;
       _canReview = canReview;
       _members = members;
+      _waypoints = waypoints;
     });
   }
 
@@ -223,6 +228,12 @@ class _HikeDetailsWebPageState extends State<HikeDetailsWebPage> {
                     style: TextButton.styleFrom(
                         foregroundColor: AppColors.accent),
                   ),
+                ],
+                if (_waypoints.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  _title('Маршрут на карті'),
+                  const SizedBox(height: 12),
+                  HikeRouteMap(waypoints: _waypoints, height: 320),
                 ],
                 const SizedBox(height: 24),
                 _title('Хто вже йде'),

@@ -50,6 +50,8 @@ dependencies:
   firebase_crashlytics: ^5.2.7
   image_picker: ^1.2.3
   file_picker: ^8.1.7
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:

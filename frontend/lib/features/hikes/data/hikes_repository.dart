@@ -10,6 +10,7 @@ import 'models/join_request.dart';
 import 'models/message.dart';
 import 'models/profile_ref.dart';
 import 'models/review.dart';
+import 'models/waypoint.dart';
 
 /// User-facing error for join flows; its message is safe to show directly.
 class JoinException implements Exception {
@@ -558,6 +559,18 @@ class HikesRepository {
     if (rows.isEmpty) return (average: 0.0, count: 0);
     final sum = rows.fold<int>(0, (a, r) => a + (r['rating'] as int? ?? 0));
     return (average: sum / rows.length, count: rows.length);
+  }
+
+  /// Ordered route waypoints for a hike (empty if none set).
+  Future<List<Waypoint>> fetchWaypoints(String hikeId) async {
+    final client = _client;
+    if (client == null) return const [];
+    final rows = await client
+        .from('hike_waypoints')
+        .select('seq, name, lat, lng')
+        .eq('hike_id', hikeId)
+        .order('seq', ascending: true);
+    return rows.map((r) => Waypoint.fromMap(r)).toList();
   }
 
   /// Approved participants of a hike (who's going), including the organizer's
