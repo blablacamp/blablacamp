@@ -114,32 +114,52 @@ class _ChatViewState extends State<_ChatView> {
     await cubit.sendContact(result.name, result.handle);
   }
 
-  void _openAttachMenu() {
-    showModalBottomSheet<void>(
+  /// Presents [content] as a centered dialog on wide (web) layouts, or a
+  /// bottom sheet on mobile.
+  Future<void> _present(Widget content, {double maxWidth = 420}) {
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+    if (wide) {
+      return showDialog<void>(
+        context: context,
+        builder: (_) => Dialog(
+          backgroundColor: AppColors.cream,
+          shape: RoundedRectangleBorder(borderRadius: AppShapes.leaf),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: content,
+          ),
+        ),
+      );
+    }
+    return showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.cream,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _attachTile(Icons.photo_outlined, 'Фото', () {
-              Navigator.pop(context);
-              _pickImage();
-            }),
-            _attachTile(Icons.attach_file, 'Файл', () {
-              Navigator.pop(context);
-              _pickFile();
-            }),
-            _attachTile(Icons.person_outline, 'Поділитися контактом', () {
-              Navigator.pop(context);
-              _shareContact();
-            }),
-            const SizedBox(height: 8),
-          ],
-        ),
+      builder: (_) => SafeArea(child: content),
+    );
+  }
+
+  void _openAttachMenu() {
+    _present(
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _attachTile(Icons.photo_outlined, 'Фото', () {
+            Navigator.pop(context);
+            _pickImage();
+          }),
+          _attachTile(Icons.attach_file, 'Файл', () {
+            Navigator.pop(context);
+            _pickFile();
+          }),
+          _attachTile(Icons.person_outline, 'Поділитися контактом', () {
+            Navigator.pop(context);
+            _shareContact();
+          }),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
@@ -157,43 +177,36 @@ class _ChatViewState extends State<_ChatView> {
   void _showParticipants() async {
     final members = await widget.repository.fetchApprovedParticipants(widget.hikeId);
     if (!mounted) return;
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.cream,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Учасники (${members.length})',
-                  style: GoogleFonts.unbounded(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary)),
-              const SizedBox(height: 12),
-              if (members.isEmpty)
-                Text('Поки лише ти.',
-                    style: GoogleFonts.manrope(color: AppColors.textSecondary)),
-              for (final p in members)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Row(children: [
-                    AvatarCircle(profile: p, size: 40),
-                    const SizedBox(width: 12),
-                    Text(p.displayName,
-                        style: GoogleFonts.manrope(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary)),
-                  ]),
-                ),
-            ],
-          ),
+    _present(
+      Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Учасники (${members.length})',
+                style: GoogleFonts.unbounded(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 12),
+            if (members.isEmpty)
+              Text('Поки лише ти.',
+                  style: GoogleFonts.manrope(color: AppColors.textSecondary)),
+            for (final p in members)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(children: [
+                  AvatarCircle(profile: p, size: 40),
+                  const SizedBox(width: 12),
+                  Text(p.displayName,
+                      style: GoogleFonts.manrope(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary)),
+                ]),
+              ),
+          ],
         ),
       ),
     );
@@ -232,7 +245,10 @@ class _ChatViewState extends State<_ChatView> {
           ),
         ],
       ),
-      body: Column(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: Column(
         children: [
           Expanded(
             child: BlocConsumer<ChatCubit, ChatState>(
@@ -274,6 +290,8 @@ class _ChatViewState extends State<_ChatView> {
             onTyping: () => context.read<ChatCubit>().notifyTyping(),
           ),
         ],
+          ),
+        ),
       ),
     );
   }
@@ -315,8 +333,9 @@ class _Bubble extends StatelessWidget {
         padding: message.kind == MessageKind.image
             ? const EdgeInsets.all(4)
             : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints:
-            BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.75),
+        constraints: BoxConstraints(
+            maxWidth:
+                (MediaQuery.sizeOf(context).width * 0.75).clamp(0, 460)),
         decoration: BoxDecoration(
           color: mine ? AppColors.accent : AppColors.cream,
           borderRadius: BorderRadius.only(

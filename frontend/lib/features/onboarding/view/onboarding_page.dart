@@ -4,6 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/brand/app_logo.dart';
+import '../../../core/responsive/responsive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shapes.dart';
 import '../cubit/onboarding_cubit.dart';
@@ -27,6 +29,8 @@ class _OnboardingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (context.isDesktop) return const _OnboardingWeb();
+
     final size = MediaQuery.sizeOf(context);
     final heroHeight = size.height * 0.55;
 
@@ -79,6 +83,82 @@ class _OnboardingView extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Web layout for the role picker: two columns, centered, constrained.
+class _OnboardingWeb extends StatelessWidget {
+  const _OnboardingWeb();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.ink,
+      body: SingleChildScrollView(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1080),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const AppLogo(size: 20, onDark: true),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => context.push('/auth'),
+                        child: Text('Увійти',
+                            style: GoogleFonts.manrope(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.cream)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            _SloganBlock(),
+                            SizedBox(height: 32),
+                            _RoleSelector(),
+                            SizedBox(height: 20),
+                            _ContinueButton(),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 48),
+                      Expanded(
+                        flex: 6,
+                        child: ClipRRect(
+                          borderRadius: AppShapes.leaf,
+                          child: AspectRatio(
+                            aspectRatio: 4 / 3,
+                            child: Image.asset(
+                              'assets/images/onboarding_hero.jpg',
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

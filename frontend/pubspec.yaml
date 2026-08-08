@@ -77,14 +77,13 @@ flutter_launcher_icons:
     background_color: "#E7632B"
     theme_color: "#C94D32"
 
-# Native splash — static ink screen + mountain mark; hands off to the animated
-# in-app SplashGate. (run: dart run flutter_native_splash:create)
+# Native splash — plain ink screen (NO logo) so it blends seamlessly into the
+# animated in-app SplashGate, which is the only visible logo animation.
+# (run: dart run flutter_native_splash:create)
 flutter_native_splash:
   color: "#121719"
-  image: "assets/brand/splash_logo.png"
   android_12:
     color: "#121719"
-    image: "assets/brand/splash_logo.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
