@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/logging/app_logger.dart';
@@ -26,6 +28,14 @@ class HikesRepository {
 
   String? get currentUserId => _client?.auth.currentUser?.id;
 
+  String get currentUserName {
+    final u = _client?.auth.currentUser;
+    final meta = u?.userMetadata;
+    return (meta?['display_name'] as String?)?.trim().isNotEmpty == true
+        ? meta!['display_name'] as String
+        : 'Хтось';
+  }
+
   static const _organizerSelect =
       'organizer:profiles!hikes_organizer_id_fkey(id, display_name, avatar_url)';
 
@@ -36,6 +46,7 @@ class HikesRepository {
         .from('hikes')
         .select('*, $_organizerSelect')
         .neq('status', 'draft')
+        .eq('is_hidden', false)
         .order('start_date', ascending: true)
         .limit(20);
     return rows.map((r) => Hike.fromMap(r)).toList();
@@ -61,7 +72,8 @@ class HikesRepository {
     var req = _client
         .from('hikes')
         .select('*, $_organizerSelect')
-        .neq('status', 'draft');
+        .neq('status', 'draft')
+        .eq('is_hidden', false);
     if (type != null) req = req.eq('type', type.name);
     final q = (query ?? '').trim();
     if (q.isNotEmpty) {
@@ -370,15 +382,87 @@ class HikesRepository {
         .insert({'hike_id': hikeId, 'sender_id': uid, 'body': body});
   }
 
+  /// Uploads a chat attachment to the `chat` bucket and returns its public URL.
+  /// Path: {hikeId}/{uid}/{ts}_{filename}
+  Future<String> uploadChatAttachment(
+    String hikeId,
+    Uint8List bytes,
+    String filename, {
+    String? contentType,
+  }) async {
+    final client = _client;
+    final uid = client?.auth.currentUser?.id;
+    if (client == null || uid == null) throw StateError('Треба увійти.');
+    final safe = filename.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final path = '$hikeId/$uid/${ts}_$safe';
+    await client.storage.from('chat').uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+              contentType: contentType, upsert: false),
+        );
+    return client.storage.from('chat').getPublicUrl(path);
+  }
+
+  /// Sends an image or file message (attachment already uploaded).
+  Future<void> sendAttachmentMessage(
+    String hikeId, {
+    required String kind, // 'image' | 'file'
+    required String attachmentUrl,
+    required String attachmentName,
+    String body = '',
+  }) async {
+    final client = _client;
+    final uid = client?.auth.currentUser?.id;
+    if (client == null || uid == null) throw StateError('Треба увійти.');
+    await client.from('messages').insert({
+      'hike_id': hikeId,
+      'sender_id': uid,
+      'kind': kind,
+      'attachment_url': attachmentUrl,
+      'attachment_name': attachmentName,
+      'body': body,
+    });
+  }
+
+  /// Shares a contact card (name + phone/handle) into the chat.
+  Future<void> sendContactMessage(
+    String hikeId, {
+    required String name,
+    required String handle,
+  }) async {
+    final client = _client;
+    final uid = client?.auth.currentUser?.id;
+    if (client == null || uid == null) throw StateError('Треба увійти.');
+    await client.from('messages').insert({
+      'hike_id': hikeId,
+      'sender_id': uid,
+      'kind': 'contact',
+      'body': '',
+      'meta': {'name': name, 'handle': handle},
+    });
+  }
+
+  /// Broadcasts a lightweight "typing" ping on the hike channel.
+  void broadcastTyping(RealtimeChannel channel) {
+    channel.sendBroadcastMessage(
+      event: 'typing',
+      payload: {'uid': currentUserId, 'name': currentUserName},
+    );
+  }
+
   /// Subscribes to new messages for a hike via Supabase Realtime. [onChange]
   /// fires on every insert; returns null when Supabase isn't configured.
   RealtimeChannel? subscribeToMessages(
-      String hikeId, void Function() onChange) {
+    String hikeId,
+    void Function() onChange, {
+    void Function(String name)? onTyping,
+  }) {
     final client = _client;
     if (client == null) return null;
-    final channel = client
-        .channel('public:messages:$hikeId')
-        .onPostgresChanges(
+    final myId = currentUserId;
+    var channel = client.channel('public:messages:$hikeId').onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'messages',
@@ -388,9 +472,17 @@ class HikesRepository {
             value: hikeId,
           ),
           callback: (_) => onChange(),
-        )
-        .subscribe();
-    return channel;
+        );
+    if (onTyping != null) {
+      channel = channel.onBroadcast(
+        event: 'typing',
+        callback: (payload) {
+          if (payload['uid'] == myId) return; // ignore self
+          onTyping((payload['name'] as String?) ?? 'Хтось');
+        },
+      );
+    }
+    return channel.subscribe();
   }
 
   Future<void> unsubscribe(RealtimeChannel channel) async {
@@ -453,6 +545,110 @@ class HikesRepository {
       'body': body,
     }, onConflict: 'author_id,subject_id,hike_id');
     AppLog.I.info('reviews', 'addReview', {'subjectId': subjectId, 'rating': rating});
+  }
+
+  /// Aggregate rating for a person: average stars + how many reviews.
+  Future<({double average, int count})> fetchUserRating(String userId) async {
+    final client = _client;
+    if (client == null) return (average: 0.0, count: 0);
+    final rows = await client
+        .from('reviews')
+        .select('rating')
+        .eq('subject_id', userId);
+    if (rows.isEmpty) return (average: 0.0, count: 0);
+    final sum = rows.fold<int>(0, (a, r) => a + (r['rating'] as int? ?? 0));
+    return (average: sum / rows.length, count: rows.length);
+  }
+
+  /// Approved participants of a hike (who's going), including the organizer's
+  /// members. Newest-approved first is not important here — order by join time.
+  Future<List<ProfileRef>> fetchApprovedParticipants(String hikeId) async {
+    final client = _client;
+    if (client == null) return const [];
+    final rows = await client
+        .from('hike_participants')
+        .select(
+            'member:profiles!hike_participants_user_id_fkey(id, display_name, avatar_url)')
+        .eq('hike_id', hikeId)
+        .eq('status', 'approved')
+        .order('created_at', ascending: true);
+    return rows
+        .map((r) => r['member'])
+        .whereType<Map<String, dynamic>>()
+        .map(ProfileRef.fromMap)
+        .toList();
+  }
+
+  /// The current user's participation status for a hike, or null if none.
+  /// One of: 'approved', 'pending', 'rejected'.
+  Future<String?> fetchMyParticipation(String hikeId) async {
+    final client = _client;
+    if (client == null) return null;
+    final uid = client.auth.currentUser?.id;
+    if (uid == null) return null;
+    final row = await client
+        .from('hike_participants')
+        .select('status')
+        .eq('hike_id', hikeId)
+        .eq('user_id', uid)
+        .maybeSingle();
+    return row?['status'] as String?;
+  }
+
+  /// Whether the current user may leave a review about [subjectId] for [hikeId]
+  /// (approved participant of a hike that has already happened). Mirrors the
+  /// server-side RLS so the UI can hide the action instead of failing an insert.
+  Future<bool> canReview({
+    required String subjectId,
+    required String hikeId,
+  }) async {
+    final client = _client;
+    final uid = client?.auth.currentUser?.id;
+    if (client == null || uid == null || uid == subjectId) return false;
+    final row = await client
+        .from('hike_participants')
+        .select('status, hike:hikes(start_date, end_date)')
+        .eq('hike_id', hikeId)
+        .eq('user_id', uid)
+        .maybeSingle();
+    if (row == null || row['status'] != 'approved') return false;
+    final hike = row['hike'] as Map<String, dynamic>?;
+    final ends = (hike?['end_date'] ?? hike?['start_date']) as String?;
+    if (ends == null) return false;
+    final endDate = DateTime.tryParse(ends);
+    if (endDate == null) return false;
+    return !endDate.isAfter(DateTime.now());
+  }
+
+  /// File a moderation report about a hike, user, or message.
+  Future<void> addReport({
+    required String targetType, // 'hike' | 'user' | 'message'
+    required String targetId,
+    String? hikeId,
+    required String reason, // spam|scam|unsafe|harassment|other
+    String? details,
+  }) async {
+    final client = _client;
+    final uid = client?.auth.currentUser?.id;
+    if (client == null || uid == null) {
+      throw StateError('Треба увійти, щоб поскаржитися.');
+    }
+    try {
+      await client.from('reports').insert({
+        'reporter_id': uid,
+        'target_type': targetType,
+        'target_id': targetId,
+        'hike_id': hikeId,
+        'reason': reason,
+        'details': details,
+      });
+    } on PostgrestException catch (e) {
+      if (e.code == '23505') {
+        throw StateError('Ти вже надсилав(-ла) цю скаргу.');
+      }
+      rethrow;
+    }
+    AppLog.I.info('reports', 'addReport', {'targetType': targetType, 'reason': reason});
   }
 
   /// Gear checklist for a hike (current user). Falls back to the sample set.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import 'core/brand/splash_gate.dart';
 import 'core/notifications/notifications_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/data/auth_repository.dart';
@@ -37,6 +38,8 @@ class BlablacampApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
           routerConfig: router,
+          builder: (context, child) =>
+              SplashGate(child: child ?? const SizedBox.shrink()),
         ),
       ),
     );

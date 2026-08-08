@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../features/auth/data/auth_repository.dart';
+import '../../brand/app_logo.dart';
 import '../../responsive/responsive.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_shapes.dart';
@@ -39,12 +40,7 @@ class WebNavBar extends StatelessWidget {
           children: [
             GestureDetector(
               onTap: () => context.go(loggedIn ? '/home' : '/'),
-              child: Text('BlaBlaCamp',
-                  style: GoogleFonts.manrope(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: fg,
-                  )),
+              child: AppLogo(size: 20, onDark: onDark),
             ),
             const SizedBox(width: 40),
             for (final (label, path) in links) ...[

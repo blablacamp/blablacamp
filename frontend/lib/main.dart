@@ -58,6 +58,12 @@ Future<void> main() async {
       // same public client credential; anonKey is still accepted.
       // ignore: deprecated_member_use
       anonKey: Env.supabaseAnonKey,
+      // Persist the session locally and silently refresh the access token, so a
+      // returning user is logged straight back in while the refresh token is
+      // valid (no re-login until it actually expires).
+      authOptions: const FlutterAuthClientOptions(
+        autoRefreshToken: true,
+      ),
     );
     client = Supabase.instance.client;
   }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/data/auth_repository.dart';
@@ -46,116 +47,150 @@ GoRouter createRouter(AuthRepository auth) {
     routes: [
       GoRoute(
         path: '/',
-        builder: (context, state) => const ResponsiveLayout(
+        pageBuilder: (context, state) => _page(state, const ResponsiveLayout(
           mobile: _introBuilder,
           desktop: _landingBuilder,
-        ),
+        )),
       ),
       GoRoute(
         path: '/onboarding',
-        builder: (context, state) => const ResponsiveLayout(
+        pageBuilder: (context, state) => _page(state, const ResponsiveLayout(
           mobile: _introBuilder,
           desktop: _landingBuilder,
-        ),
+        )),
       ),
       GoRoute(
         path: '/rules',
-        builder: (context, state) => const InfoPage(topic: 'rules'),
+        pageBuilder: (context, state) =>
+            _page(state, const InfoPage(topic: 'rules')),
       ),
       GoRoute(
         path: '/safety',
-        builder: (context, state) => const InfoPage(topic: 'safety'),
+        pageBuilder: (context, state) =>
+            _page(state, const InfoPage(topic: 'safety')),
       ),
       GoRoute(
         path: '/contact',
-        builder: (context, state) => const InfoPage(topic: 'contact'),
+        pageBuilder: (context, state) =>
+            _page(state, const InfoPage(topic: 'contact')),
       ),
       GoRoute(
         path: '/role',
-        builder: (context, state) => const OnboardingPage(),
+        pageBuilder: (context, state) => _page(state, const OnboardingPage()),
       ),
       GoRoute(
         path: '/auth',
-        builder: (context, state) =>
-            AuthPage(role: state.extra as String? ?? 'campmate'),
+        pageBuilder: (context, state) =>
+            _page(state, AuthPage(role: state.extra as String? ?? 'campmate')),
       ),
       GoRoute(
         path: '/home',
-        builder: (context, state) => ResponsiveLayout(
-          mobile: (c) => HomeShell(role: state.extra as String?),
-          desktop: (c) => const SearchWebPage(),
-        ),
+        pageBuilder: (context, state) => _page(
+            state,
+            ResponsiveLayout(
+              mobile: (c) => HomeShell(role: state.extra as String?),
+              desktop: (c) => const SearchWebPage(),
+            )),
       ),
       GoRoute(
         path: '/search',
-        builder: (context, state) => ResponsiveLayout(
-          mobile: (c) => SearchPage(
-            onOpenHike: (hike) => c.push('/hike', extra: hike),
-          ),
-          desktop: (c) => const SearchWebPage(),
-        ),
+        pageBuilder: (context, state) => _page(
+            state,
+            ResponsiveLayout(
+              mobile: (c) => SearchPage(
+                onOpenHike: (hike) => c.push('/hike', extra: hike),
+              ),
+              desktop: (c) => const SearchWebPage(),
+            )),
       ),
       GoRoute(
         path: '/hike',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final hike = state.extra as Hike;
-          return ResponsiveLayout(
-            mobile: (c) => HikeDetailsPage(hike: hike),
-            desktop: (c) => HikeDetailsWebPage(hike: hike),
-          );
+          return _page(
+              state,
+              ResponsiveLayout(
+                mobile: (c) => HikeDetailsPage(hike: hike),
+                desktop: (c) => HikeDetailsWebPage(hike: hike),
+              ));
         },
       ),
       GoRoute(
         path: '/hike/:id',
-        builder: (context, state) =>
-            HikeDetailsLoader(hikeId: state.pathParameters['id']!),
+        pageBuilder: (context, state) =>
+            _page(state, HikeDetailsLoader(hikeId: state.pathParameters['id']!)),
       ),
       GoRoute(
         path: '/create-hike',
-        builder: (context, state) => ResponsiveLayout(
-          mobile: (c) => const CreateHikePage(),
-          desktop: (c) => const WebChrome(
-              scrollable: false, maxContentWidth: 720, child: CreateHikePage()),
-        ),
+        pageBuilder: (context, state) => _page(
+            state,
+            const ResponsiveLayout(
+              mobile: _createHikeBuilder,
+              desktop: _createHikeWebBuilder,
+            )),
       ),
       GoRoute(
         path: '/favorites',
-        builder: (context, state) => ResponsiveLayout(
-          mobile: (c) => const FavoritesPage(),
-          desktop: (c) => const WebChrome(
-              scrollable: false, maxContentWidth: 760, child: FavoritesPage()),
-        ),
+        pageBuilder: (context, state) => _page(
+            state,
+            const ResponsiveLayout(
+              mobile: _favoritesBuilder,
+              desktop: _favoritesWebBuilder,
+            )),
       ),
       GoRoute(
         path: '/my-hikes',
-        builder: (context, state) => ResponsiveLayout(
-          mobile: (c) => const BackpackPage(),
-          desktop: (c) => const WebChrome(
-              scrollable: false, maxContentWidth: 760, child: BackpackPage()),
-        ),
+        pageBuilder: (context, state) => _page(
+            state,
+            const ResponsiveLayout(
+              mobile: _backpackBuilder,
+              desktop: _backpackWebBuilder,
+            )),
       ),
       GoRoute(
         path: '/messages',
-        builder: (context, state) => ResponsiveLayout(
-          mobile: (c) => const MessagesPage(),
-          desktop: (c) => const WebChrome(
-              scrollable: false, maxContentWidth: 760, child: MessagesPage()),
-        ),
+        pageBuilder: (context, state) => _page(
+            state,
+            const ResponsiveLayout(
+              mobile: _messagesBuilder,
+              desktop: _messagesWebBuilder,
+            )),
       ),
       GoRoute(
         path: '/profile',
-        builder: (context, state) => ResponsiveLayout(
-          mobile: (c) => const ProfilePage(),
-          desktop: (c) => const WebChrome(
-              scrollable: false, maxContentWidth: 760, child: ProfilePage()),
-        ),
+        pageBuilder: (context, state) => _page(
+            state,
+            const ResponsiveLayout(
+              mobile: _profileBuilder,
+              desktop: _profileWebBuilder,
+            )),
       ),
     ],
   );
 }
 
+/// Web navigation should feel like a website (instant), not a mobile push.
+Page<void> _page(GoRouterState state, Widget child) => kIsWeb
+    ? NoTransitionPage<void>(key: state.pageKey, child: child)
+    : MaterialPage<void>(key: state.pageKey, child: child);
+
 Widget _introBuilder(BuildContext context) => const IntroPage();
 Widget _landingBuilder(BuildContext context) => const LandingPage();
+Widget _createHikeBuilder(BuildContext context) => const CreateHikePage();
+Widget _createHikeWebBuilder(BuildContext context) => const WebChrome(
+    scrollable: false, maxContentWidth: 720, child: CreateHikePage());
+Widget _favoritesBuilder(BuildContext context) => const FavoritesPage();
+Widget _favoritesWebBuilder(BuildContext context) => const WebChrome(
+    scrollable: false, maxContentWidth: 760, child: FavoritesPage());
+Widget _backpackBuilder(BuildContext context) => const BackpackPage();
+Widget _backpackWebBuilder(BuildContext context) => const WebChrome(
+    scrollable: false, maxContentWidth: 760, child: BackpackPage());
+Widget _messagesBuilder(BuildContext context) => const MessagesPage();
+Widget _messagesWebBuilder(BuildContext context) => const WebChrome(
+    scrollable: false, maxContentWidth: 760, child: MessagesPage());
+Widget _profileBuilder(BuildContext context) => const ProfilePage();
+Widget _profileWebBuilder(BuildContext context) => const WebChrome(
+    scrollable: false, maxContentWidth: 760, child: ProfilePage());
 
 /// Bridges a [Stream] to [Listenable] so GoRouter re-evaluates redirects when
 /// the auth state changes.
