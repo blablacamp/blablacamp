@@ -1,28 +1,33 @@
-name: Deploy
+name: 🚀 Deploy Web
 
-# Deploys the web app to Firebase Hosting on every push to main.
+# Builds the Flutter web app and publishes it to Firebase Hosting (blablacamp.com)
+# on every push to main.
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
 jobs:
-  web:
-    name: Web → Firebase Hosting
+  deploy-web:
+    name: Build & Publish to blablacamp.com
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
         with:
           flutter-version: 3.41.9
           channel: stable
           cache: true
-      - run: flutter pub get
-      - run: flutter build web --release --dart-define-from-file=dart_defines.json
-      - name: Deploy to Firebase Hosting (live)
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build web (release)
+        run: flutter build web --release --dart-define-from-file=dart_defines.json
+      - name: Publish to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
