@@ -129,7 +129,7 @@ class _HeroWithConsole extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.asset('assets/images/home_hero.png', fit: BoxFit.cover),
+              Image.asset('assets/images/home_hero.jpg', fit: BoxFit.cover),
               const ColoredBox(color: Color(0x73263237)),
               Padding(
                 padding: EdgeInsets.fromLTRB(20, topInset + 12, 20, 44),
@@ -538,7 +538,7 @@ class _RecommendationCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: AppShapes.leafOf(12, 4),
-                  child: Image.asset('assets/images/rec_photo.png',
+                  child: Image.asset('assets/images/rec_photo.jpg',
                       width: 100, height: 80, fit: BoxFit.cover),
                 ),
                 const SizedBox(width: 12),

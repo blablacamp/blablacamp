@@ -7,7 +7,7 @@ import 'package:blablacamp/features/auth/data/auth_repository.dart';
 import 'package:blablacamp/features/hikes/data/hikes_repository.dart';
 
 void main() {
-  testWidgets('onboarding renders brand, slogan and CTA', (tester) async {
+  testWidgets('intro carousel renders slide + CTA', (tester) async {
     final auth = AuthRepository();
     await tester.pumpWidget(BlablacampApp(
       router: createRouter(auth),
@@ -17,9 +17,8 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('BlaBlaCamp'), findsOneWidget);
-    expect(find.text('Хочу приєднатися'), findsOneWidget);
-    expect(find.text('Хочу зібрати групу'), findsOneWidget);
-    expect(find.text('Подивитися, хто куди йде'), findsOneWidget);
+    expect(find.textContaining('Незнайомі на вокзалі'), findsOneWidget);
+    expect(find.text('Далі'), findsOneWidget);
+    expect(find.text('Пропустити'), findsOneWidget);
   });
 }

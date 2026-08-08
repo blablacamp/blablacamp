@@ -49,7 +49,7 @@ class _OnboardingView extends StatelessWidget {
               ).createShader(rect),
               blendMode: BlendMode.dstIn,
               child: Image.asset(
-                'assets/images/onboarding_hero.png',
+                'assets/images/onboarding_hero.jpg',
                 fit: BoxFit.cover,
               ),
             ),

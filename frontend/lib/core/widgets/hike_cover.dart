@@ -19,8 +19,8 @@ class HikeCover extends StatelessWidget {
   final double? height;
 
   static const _fallbacks = [
-    'assets/images/cover_fallback.png',
-    'assets/images/cover_fallback_2.png',
+    'assets/images/cover_fallback.jpg',
+    'assets/images/cover_fallback_2.jpg',
   ];
 
   @override

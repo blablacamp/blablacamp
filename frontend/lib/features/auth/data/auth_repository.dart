@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Wraps Supabase Auth. When no client is configured (UI preview) it reports
@@ -61,6 +63,24 @@ class AuthRepository {
       'display_name': displayName,
       'bio': bio,
     }).eq('id', uid);
+  }
+
+  /// Uploads an avatar to the `avatars` bucket under the user's folder and
+  /// stores its public URL on the profile. Returns the URL.
+  Future<String> uploadAvatar(Uint8List bytes, {String ext = 'jpg'}) async {
+    final client = _require();
+    final uid = client.auth.currentUser!.id;
+    final path = '$uid/avatar.$ext';
+    await client.storage.from('avatars').uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(upsert: true, contentType: 'image/$ext'),
+        );
+    final base = client.storage.from('avatars').getPublicUrl(path);
+    // Cache-bust so the new image shows immediately.
+    final url = '$base?v=${DateTime.now().millisecondsSinceEpoch}';
+    await client.from('profiles').update({'avatar_url': url}).eq('id', uid);
+    return url;
   }
 
   SupabaseClient _require() {

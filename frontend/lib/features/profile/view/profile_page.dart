@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shapes.dart';
+import '../../../core/widgets/avatar_circle.dart';
+import '../../../core/widgets/star_rating.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../hikes/data/hikes_repository.dart';
+import '../../hikes/data/models/review.dart';
 import '../../hikes/view/create_hike_page.dart';
 import '../../requests/view/organizer_requests_page.dart';
 
@@ -18,8 +23,11 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   AuthRepository get _auth => context.read<AuthRepository>();
+  HikesRepository get _hikes => context.read<HikesRepository>();
   Map<String, dynamic>? _profile;
+  List<Review> _reviews = const [];
   bool _loading = true;
+  bool _uploadingAvatar = false;
 
   @override
   void initState() {
@@ -29,11 +37,39 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _load() async {
     final p = await _auth.fetchMyProfile();
+    final uid = _auth.currentUser?.id;
+    final reviews = uid == null ? <Review>[] : await _hikes.fetchReviews(uid);
     if (!mounted) return;
     setState(() {
       _profile = p;
+      _reviews = reviews;
       _loading = false;
     });
+  }
+
+  double get _avgRating => _reviews.isEmpty
+      ? 0
+      : _reviews.map((r) => r.rating).reduce((a, b) => a + b) / _reviews.length;
+
+  Future<void> _pickAvatar() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      imageQuality: 80,
+    );
+    if (picked == null) return;
+    setState(() => _uploadingAvatar = true);
+    try {
+      final bytes = await picked.readAsBytes();
+      final ext = picked.name.split('.').last.toLowerCase();
+      await _auth.uploadAvatar(bytes, ext: ext == 'png' ? 'png' : 'jpg');
+      await _load();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Не вдалося: $e')));
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
   }
 
   String get _name {
@@ -43,6 +79,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   String? get _bio => _profile?['bio'] as String?;
+  String? get _avatarUrl => _profile?['avatar_url'] as String?;
 
   Future<void> _edit() async {
     final saved = await showModalBottomSheet<bool>(
@@ -72,8 +109,7 @@ class _ProfilePageState extends State<ProfilePage> {
           child: _loading
               ? const Center(
                   child: CircularProgressIndicator(color: AppColors.accent))
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              : ListView(
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -97,19 +133,13 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        CircleAvatar(
-                          radius: 32,
-                          backgroundColor: AppColors.divider,
-                          child: Text(
-                            _name.isNotEmpty
-                                ? _name.substring(0, 1).toUpperCase()
-                                : '?',
-                            style: GoogleFonts.manrope(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
+                        _AvatarPicker(
+                          url: _avatarUrl,
+                          letter: _name.isNotEmpty
+                              ? _name.substring(0, 1).toUpperCase()
+                              : '?',
+                          uploading: _uploadingAvatar,
+                          onTap: _pickAvatar,
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -128,6 +158,21 @@ class _ProfilePageState extends State<ProfilePage> {
                                       fontSize: 13,
                                       color: AppColors.textSecondary,
                                     )),
+                              if (_reviews.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    StarRating(value: _avgRating, size: 16),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                        '${_avgRating.toStringAsFixed(1)} · ${_reviews.length} відгук(ів)',
+                                        style: GoogleFonts.manrope(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary,
+                                        )),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -176,7 +221,19 @@ class _ProfilePageState extends State<ProfilePage> {
                       onTap: () => Navigator.of(context).push(MaterialPageRoute(
                           builder: (_) => const OrganizerRequestsPage())),
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 24),
+                    if (_reviews.isNotEmpty) ...[
+                      Text('ВІДГУКИ',
+                          style: GoogleFonts.manrope(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            color: AppColors.textSecondary,
+                          )),
+                      const SizedBox(height: 8),
+                      for (final r in _reviews) _ReviewTile(review: r),
+                      const SizedBox(height: 24),
+                    ],
                     if (_auth.isConfigured)
                       SizedBox(
                         width: double.infinity,
@@ -335,6 +392,122 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
           borderSide: const BorderSide(color: AppColors.accent, width: 2),
         ),
       );
+}
+
+class _AvatarPicker extends StatelessWidget {
+  const _AvatarPicker({
+    required this.url,
+    required this.letter,
+    required this.uploading,
+    required this.onTap,
+  });
+
+  final String? url;
+  final String letter;
+  final bool uploading;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasUrl = url != null && url!.isNotEmpty;
+    return GestureDetector(
+      onTap: uploading ? null : onTap,
+      child: Stack(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            clipBehavior: Clip.antiAlias,
+            decoration: const BoxDecoration(
+              color: AppColors.divider,
+              shape: BoxShape.circle,
+            ),
+            child: uploading
+                ? const Center(
+                    child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.accent)))
+                : hasUrl
+                    ? Image.network(url!, fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _letter())
+                    : _letter(),
+          ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: AppColors.accent,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.camera_alt,
+                  size: 12, color: AppColors.cream),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _letter() => Center(
+        child: Text(letter,
+            style: GoogleFonts.manrope(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textSecondary,
+            )),
+      );
+}
+
+class _ReviewTile extends StatelessWidget {
+  const _ReviewTile({required this.review});
+  final Review review;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.cream,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (review.author != null)
+                AvatarCircle(profile: review.author!, size: 28),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(review.author?.displayName ?? 'Мандрівник',
+                    style: GoogleFonts.manrope(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    )),
+              ),
+              StarRating(value: review.rating.toDouble(), size: 14),
+            ],
+          ),
+          if (review.body != null && review.body!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(review.body!,
+                style: GoogleFonts.manrope(
+                  fontSize: 14,
+                  height: 1.4,
+                  color: AppColors.textSecondary,
+                )),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class _ActionTile extends StatelessWidget {

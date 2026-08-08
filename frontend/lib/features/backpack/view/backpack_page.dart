@@ -4,8 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shapes.dart';
+import '../../../core/utils/date_format.dart';
 import '../../hikes/data/hikes_repository.dart';
 import '../../hikes/data/models/checklist_item.dart';
+import '../../hikes/data/models/hike.dart';
 import '../cubit/backpack_cubit.dart';
 
 const _green = Color(0xFF47725B);
@@ -15,15 +17,12 @@ const _panelBorder = Color(0xFFD2D0C8);
 
 /// "Мої походи" — the gear backpack checklist. Node: terrain-backpack (94:426).
 class BackpackPage extends StatelessWidget {
-  const BackpackPage({super.key, this.hikeId = 'sample-borzhava'});
-
-  final String hikeId;
+  const BackpackPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (ctx) =>
-          BackpackCubit(ctx.read<HikesRepository>(), hikeId: hikeId),
+      create: (ctx) => BackpackCubit(ctx.read<HikesRepository>()),
       child: const _BackpackView(),
     );
   }
@@ -36,8 +35,24 @@ class _BackpackView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
+      floatingActionButton: BlocBuilder<BackpackCubit, BackpackState>(
+        builder: (context, state) => state.hike == null
+            ? const SizedBox.shrink()
+            : FloatingActionButton(
+                backgroundColor: AppColors.accent,
+                foregroundColor: AppColors.cream,
+                onPressed: () => _showAddItem(context),
+                child: const Icon(Icons.add),
+              ),
+      ),
       body: BlocBuilder<BackpackCubit, BackpackState>(
         builder: (context, state) {
+          if (state.status == BackpackStatus.loading) {
+            return const Center(
+                child: CircularProgressIndicator(color: AppColors.accent));
+          }
+          final hike = state.hike;
+          if (hike == null) return const _EmptyBackpack();
           final missing = state.missing.length;
           return Column(
             children: [
@@ -45,7 +60,7 @@ class _BackpackView extends StatelessWidget {
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    _Hero(missingCount: missing),
+                    _Hero(hike: hike, missingCount: missing),
                     _ProgressStrip(missingGear: missing),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -150,10 +165,26 @@ class _BackpackView extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _showAddItem(BuildContext context) async {
+    final cubit = context.read<BackpackCubit>();
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (_) => const _AddItemDialog(),
+    );
+    if (result != null) {
+      await cubit.addItem(
+        category: result['category']!,
+        name: result['name']!,
+        spec: (result['spec'] ?? '').isEmpty ? null : result['spec'],
+      );
+    }
+  }
 }
 
 class _Hero extends StatelessWidget {
-  const _Hero({required this.missingCount});
+  const _Hero({required this.hike, required this.missingCount});
+  final Hike hike;
   final int missingCount;
 
   @override
@@ -164,7 +195,7 @@ class _Hero extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset('assets/images/backpack_hero.png',
+            child: Image.asset('assets/images/backpack_hero.jpg',
                 fit: BoxFit.cover),
           ),
           const Positioned.fill(
@@ -184,7 +215,8 @@ class _Hero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('БОРЖАВА · 15–16 СЕРПНЯ',
+                Text(
+                    '${(hike.region ?? '').toUpperCase()} · ${formatDateRange(hike.startDate, hike.endDate).toUpperCase()}',
                     style: GoogleFonts.ibmPlexMono(
                       fontSize: 11,
                       color: AppColors.mutedOnDark,
@@ -193,7 +225,7 @@ class _Hero extends StatelessWidget {
                 Text(
                     missingCount > 0
                         ? 'До старту бракує ${_plural(missingCount)}'
-                        : 'Наплічник зібрано',
+                        : 'Наплічник зібрано ✓',
                     style: GoogleFonts.manrope(
                       fontSize: 29,
                       fontWeight: FontWeight.w700,
@@ -202,7 +234,7 @@ class _Hero extends StatelessWidget {
                     )),
                 const SizedBox(height: 6),
                 Text(
-                    'Намет можна орендувати. Палиці може позичити Марта. Залізничний квиток ще не придбано.',
+                    hike.title,
                     style: GoogleFonts.manrope(
                       fontSize: 14,
                       height: 20 / 14,
@@ -560,6 +592,113 @@ class _StickyBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _EmptyBackpack extends StatelessWidget {
+  const _EmptyBackpack();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.backpack_outlined,
+                size: 48, color: AppColors.textSecondary),
+            const SizedBox(height: 16),
+            Text('Ти ще не в поході',
+                style: GoogleFonts.unbounded(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                )),
+            const SizedBox(height: 8),
+            Text(
+              'Приєднайся до походу — і тут з’явиться чеклист спорядження.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.manrope(
+                  fontSize: 14, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddItemDialog extends StatefulWidget {
+  const _AddItemDialog();
+
+  @override
+  State<_AddItemDialog> createState() => _AddItemDialogState();
+}
+
+class _AddItemDialogState extends State<_AddItemDialog> {
+  final _name = TextEditingController();
+  final _spec = TextEditingController();
+  static const _categories = [
+    'Ночівля', 'Одяг', 'Спорядження', 'Їжа', 'Інше'
+  ];
+  String _category = 'Спорядження';
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _spec.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.cream,
+      title: Text('Додати річ',
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _name,
+            decoration: const InputDecoration(labelText: 'Назва'),
+          ),
+          TextField(
+            controller: _spec,
+            decoration: const InputDecoration(labelText: 'Уточнення (необовʼязково)'),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _category,
+            decoration: const InputDecoration(labelText: 'Категорія'),
+            items: [
+              for (final c in _categories)
+                DropdownMenuItem(value: c, child: Text(c)),
+            ],
+            onChanged: (v) => setState(() => _category = v ?? _category),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Скасувати'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+          onPressed: () {
+            if (_name.text.trim().isEmpty) return;
+            Navigator.pop(context, {
+              'name': _name.text.trim(),
+              'spec': _spec.text.trim(),
+              'category': _category,
+            });
+          },
+          child: const Text('Додати'),
+        ),
+      ],
     );
   }
 }
