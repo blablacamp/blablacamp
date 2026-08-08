@@ -26,3 +26,4 @@ service_role*.txt
 # Firebase config (contains project API keys)
 frontend/android/app/google-services.json
 frontend/ios/Runner/GoogleService-Info.plist
+graphify-out/

@@ -5,12 +5,15 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shapes.dart';
 import '../../../core/utils/date_format.dart';
+import '../../../core/responsive/responsive.dart';
 import '../../../core/widgets/avatar_circle.dart';
 import '../../../core/widgets/hike_cover.dart';
+import '../../../core/widgets/star_rating.dart';
 import '../../favorites/cubit/favorites_cubit.dart';
 import '../data/hikes_repository.dart';
 import '../data/models/hike.dart';
 import '../data/models/hike_day.dart';
+import 'hike_details_web.dart';
 
 /// Loads a hike by id (used for push deep-links) then shows [HikeDetailsPage].
 class HikeDetailsLoader extends StatelessWidget {
@@ -37,7 +40,11 @@ class HikeDetailsLoader extends StatelessWidget {
             body: const Center(child: Text('Похід не знайдено')),
           );
         }
-        return HikeDetailsPage(hike: snap.data!);
+        final hike = snap.data!;
+        return ResponsiveLayout(
+          mobile: (c) => HikeDetailsPage(hike: hike),
+          desktop: (c) => HikeDetailsWebPage(hike: hike),
+        );
       },
     );
   }
@@ -88,6 +95,27 @@ class _HikeDetailsPageState extends State<HikeDetailsPage> {
     }
   }
 
+  Future<void> _leaveReview() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await showDialog<({int rating, String body})>(
+      context: context,
+      builder: (_) => _ReviewDialog(subjectName: hike.organizer.displayName),
+    );
+    if (result == null) return;
+    try {
+      await _repo.addReview(
+        subjectId: hike.organizer.id,
+        hikeId: hike.id,
+        rating: result.rating,
+        body: result.body.isEmpty ? null : result.body,
+      );
+      messenger.showSnackBar(
+          const SnackBar(content: Text('Дякуємо за відгук!')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isShared = hike.type == HikeType.shared;
@@ -134,6 +162,17 @@ class _HikeDetailsPageState extends State<HikeDetailsPage> {
                 _SectionTitle(isShared ? 'Хто організовує' : 'Ваш гід'),
                 const SizedBox(height: 12),
                 _OrganizerCard(hike: hike),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _leaveReview,
+                    icon: const Icon(Icons.rate_review_outlined, size: 18),
+                    label: const Text('Залишити відгук'),
+                    style:
+                        TextButton.styleFrom(foregroundColor: AppColors.accent),
+                  ),
+                ),
                 if (hike.description != null) ...[
                   const SizedBox(height: 16),
                   Container(
@@ -616,6 +655,64 @@ class _StickyBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ReviewDialog extends StatefulWidget {
+  const _ReviewDialog({required this.subjectName});
+  final String subjectName;
+
+  @override
+  State<_ReviewDialog> createState() => _ReviewDialogState();
+}
+
+class _ReviewDialogState extends State<_ReviewDialog> {
+  int _rating = 5;
+  final _body = TextEditingController();
+
+  @override
+  void dispose() {
+    _body.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.cream,
+      title: Text('Відгук про ${widget.subjectName}',
+          style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          StarRatingInput(
+            value: _rating,
+            onChanged: (v) => setState(() => _rating = v),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _body,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Як пройшов похід?',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Скасувати'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: AppColors.accent),
+          onPressed: () => Navigator.pop(
+              context, (rating: _rating, body: _body.text.trim())),
+          child: const Text('Надіслати'),
+        ),
+      ],
     );
   }
 }

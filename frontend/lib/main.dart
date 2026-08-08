@@ -1,6 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
@@ -13,6 +15,10 @@ import 'features/hikes/data/hikes_repository.dart';
 
 Future<void> main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
+
+  // Clean web URLs (/search instead of /#/search); Firebase SPA rewrite serves
+  // index.html for all paths so refresh/deep-links work.
+  if (kIsWeb) usePathUrlStrategy();
 
   // Firebase (Crashlytics). Guarded so the app still runs if config is missing.
   var crashlyticsReady = false;
@@ -83,8 +89,19 @@ Future<void> main() async {
   await syncUser(auth.currentUser);
   auth.onAuthStateChange.listen((state) => syncUser(state.session?.user));
 
+  final router = createRouter(auth);
+
+  // Deep-link: tapping a push with a hikeId opens that hike.
+  notifications.addClickListener((event) {
+    final hikeId = event.notification.additionalData?['hikeId'];
+    if (hikeId is String && hikeId.isNotEmpty) {
+      AppLog.I.info('push', 'clicked', {'hikeId': hikeId});
+      router.push('/hike/$hikeId');
+    }
+  });
+
   runApp(BlablacampApp(
-    router: createRouter(auth),
+    router: router,
     authRepository: auth,
     hikesRepository: hikes,
     notifications: notifications,

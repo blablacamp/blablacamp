@@ -7,6 +7,7 @@ import 'models/hike_day.dart';
 import 'models/join_request.dart';
 import 'models/message.dart';
 import 'models/profile_ref.dart';
+import 'models/review.dart';
 
 /// User-facing error for join flows; its message is safe to show directly.
 class JoinException implements Exception {
@@ -40,17 +41,35 @@ class HikesRepository {
     return rows.map((r) => Hike.fromMap(r)).toList();
   }
 
-  /// Search / browse, optionally filtered by type.
-  Future<List<Hike>> search({HikeType? type}) async {
+  /// Search / browse with optional type filter and text query, paginated.
+  Future<List<Hike>> search({
+    HikeType? type,
+    String? query,
+    int limit = 20,
+    int offset = 0,
+  }) async {
     if (_client == null) {
-      return type == null ? _sample : _sample.where((h) => h.type == type).toList();
+      final q = (query ?? '').trim().toLowerCase();
+      return _sample.where((h) {
+        final okType = type == null || h.type == type;
+        final okText = q.isEmpty ||
+            h.title.toLowerCase().contains(q) ||
+            (h.region ?? '').toLowerCase().contains(q);
+        return okType && okText;
+      }).toList();
     }
-    var query = _client
+    var req = _client
         .from('hikes')
         .select('*, $_organizerSelect')
         .neq('status', 'draft');
-    if (type != null) query = query.eq('type', type.name);
-    final rows = await query.order('start_date', ascending: true);
+    if (type != null) req = req.eq('type', type.name);
+    final q = (query ?? '').trim();
+    if (q.isNotEmpty) {
+      req = req.or('title.ilike.%$q%,region.ilike.%$q%,location.ilike.%$q%');
+    }
+    final rows = await req
+        .order('start_date', ascending: true)
+        .range(offset, offset + limit - 1);
     return rows.map((r) => Hike.fromMap(r)).toList();
   }
 
@@ -404,6 +423,38 @@ class HikesRepository {
     ),
   ];
 
+  // --- reviews ---------------------------------------------------------------
+  Future<List<Review>> fetchReviews(String subjectId) async {
+    final client = _client;
+    if (client == null) return const [];
+    final rows = await client
+        .from('reviews')
+        .select(
+            '*, author:profiles!reviews_author_id_fkey(id, display_name, avatar_url)')
+        .eq('subject_id', subjectId)
+        .order('created_at', ascending: false);
+    return rows.map((r) => Review.fromMap(r)).toList();
+  }
+
+  Future<void> addReview({
+    required String subjectId,
+    String? hikeId,
+    required int rating,
+    String? body,
+  }) async {
+    final client = _client;
+    final uid = client?.auth.currentUser?.id;
+    if (client == null || uid == null) throw StateError('Треба увійти.');
+    await client.from('reviews').upsert({
+      'subject_id': subjectId,
+      'author_id': uid,
+      'hike_id': hikeId,
+      'rating': rating,
+      'body': body,
+    }, onConflict: 'author_id,subject_id,hike_id');
+    AppLog.I.info('reviews', 'addReview', {'subjectId': subjectId, 'rating': rating});
+  }
+
   /// Gear checklist for a hike (current user). Falls back to the sample set.
   Future<List<ChecklistItem>> fetchChecklist(String hikeId) async {
     final client = _client;
@@ -426,6 +477,71 @@ class HikesRepository {
     await client
         .from('checklist_items')
         .update({'status': status.value}).eq('id', itemId);
+  }
+
+  /// The soonest approved hike the current user is part of (for the backpack).
+  Future<Hike?> fetchMyCurrentHike() async {
+    final client = _client;
+    if (client == null) return _sample.first;
+    final uid = client.auth.currentUser?.id;
+    if (uid == null) return null;
+    final rows = await client
+        .from('hike_participants')
+        .select('hike:hikes(*, $_organizerSelect)')
+        .eq('user_id', uid)
+        .eq('status', 'approved');
+    final hikes = rows
+        .map((r) => r['hike'])
+        .whereType<Map<String, dynamic>>()
+        .map(Hike.fromMap)
+        .toList()
+      ..sort((a, b) => (a.startDate ?? DateTime(2100))
+          .compareTo(b.startDate ?? DateTime(2100)));
+    return hikes.isEmpty ? null : hikes.first;
+  }
+
+  /// Seeds a default gear checklist for (hike, user) if none exists yet.
+  Future<void> ensureChecklist(String hikeId) async {
+    final client = _client;
+    final uid = client?.auth.currentUser?.id;
+    if (client == null || uid == null) return;
+    final existing = await client
+        .from('checklist_items')
+        .select('id')
+        .eq('hike_id', hikeId)
+        .eq('user_id', uid)
+        .limit(1);
+    if (existing.isNotEmpty) return;
+    await client.from('checklist_items').insert([
+      for (final i in _sampleChecklist)
+        {
+          'hike_id': hikeId,
+          'user_id': uid,
+          'category': i.category,
+          'name': i.name,
+          'spec': i.spec,
+          'status': ChecklistStatus.todo.value,
+        }
+    ]);
+  }
+
+  Future<void> addChecklistItem({
+    required String hikeId,
+    required String category,
+    required String name,
+    String? spec,
+  }) async {
+    final client = _client;
+    final uid = client?.auth.currentUser?.id;
+    if (client == null || uid == null) return;
+    await client.from('checklist_items').insert({
+      'hike_id': hikeId,
+      'user_id': uid,
+      'category': category,
+      'name': name,
+      'spec': spec,
+      'status': ChecklistStatus.todo.value,
+    });
   }
 
   static const List<ChecklistItem> _sampleChecklist = [

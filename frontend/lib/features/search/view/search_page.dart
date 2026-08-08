@@ -51,55 +51,77 @@ class _SearchView extends StatelessWidget {
       body: BlocBuilder<SearchCubit, SearchState>(
         builder: (context, state) {
           final cubit = context.read<SearchCubit>();
-          final hikes = state.visible;
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-            children: [
-              Text('ЛЬВІВ → КАРПАТИ · 14–18 СЕРП.',
-                  style: GoogleFonts.ibmPlexMono(
-                    fontSize: 12,
-                    color: const Color(0xFF747A78),
-                  )),
-              const SizedBox(height: 6),
-              Text('Є ${hikes.length} варіантів на твоє вікно',
-                  style: GoogleFonts.manrope(
-                    fontSize: 23,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  )),
-              const SizedBox(height: 16),
-              AppSearchField(
-                hint: 'Куди хочеш? Напр. «Боржава»',
-                onChanged: cubit.setQuery,
-              ),
-              const SizedBox(height: 20),
-              _FilterRow(
-                active: state.filter,
-                onSelect: cubit.setFilter,
-              ),
-              const SizedBox(height: 20),
-              if (state.status == SearchStatus.loading)
-                const Padding(
-                  padding: EdgeInsets.only(top: 60),
-                  child: Center(
-                    child: CircularProgressIndicator(color: AppColors.accent),
-                  ),
-                )
-              else
-                for (var i = 0; i < hikes.length; i++) ...[
-                  if (hikes[i].type == HikeType.shared)
-                    _FeaturedCard(
-                        hike: hikes[i], onTap: () => onOpenHike?.call(hikes[i]))
-                  else
-                    _GuidedCard(
-                        hike: hikes[i], onTap: () => onOpenHike?.call(hikes[i])),
-                  if (i < hikes.length - 1)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 20),
-                      child: Divider(height: 1, color: AppColors.divider),
+          final hikes = state.hikes;
+          return NotificationListener<ScrollNotification>(
+            onNotification: (n) {
+              if (n.metrics.pixels >= n.metrics.maxScrollExtent - 300) {
+                cubit.loadMore();
+              }
+              return false;
+            },
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+              children: [
+                Text(
+                    state.query.trim().isEmpty
+                        ? 'УСІ ПОХОДИ'
+                        : 'ПОШУК · «${state.query.trim().toUpperCase()}»',
+                    style: GoogleFonts.ibmPlexMono(
+                      fontSize: 12,
+                      color: const Color(0xFF747A78),
+                    )),
+                const SizedBox(height: 6),
+                Text(
+                    hikes.isEmpty && state.status == SearchStatus.ready
+                        ? 'Нічого не знайдено'
+                        : 'Є ${hikes.length}${state.hasMore ? '+' : ''} варіантів',
+                    style: GoogleFonts.manrope(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    )),
+                const SizedBox(height: 16),
+                AppSearchField(
+                  hint: 'Куди хочеш? Напр. «Боржава»',
+                  onChanged: cubit.setQuery,
+                ),
+                const SizedBox(height: 20),
+                _FilterRow(active: state.filter, onSelect: cubit.setFilter),
+                const SizedBox(height: 20),
+                if (state.status == SearchStatus.loading)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 60),
+                    child: Center(
+                      child:
+                          CircularProgressIndicator(color: AppColors.accent),
                     ),
-                ],
-            ],
+                  )
+                else
+                  for (var i = 0; i < hikes.length; i++) ...[
+                    if (hikes[i].type == HikeType.shared)
+                      _FeaturedCard(
+                          hike: hikes[i],
+                          onTap: () => onOpenHike?.call(hikes[i]))
+                    else
+                      _GuidedCard(
+                          hike: hikes[i],
+                          onTap: () => onOpenHike?.call(hikes[i])),
+                    if (i < hikes.length - 1)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: Divider(height: 1, color: AppColors.divider),
+                      ),
+                  ],
+                if (state.loadingMore)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 20),
+                    child: Center(
+                      child:
+                          CircularProgressIndicator(color: AppColors.accent),
+                    ),
+                  ),
+              ],
+            ),
           );
         },
       ),

@@ -16,8 +16,10 @@ class NotificationsService {
   bool get isInitialized => _initialized;
 
   /// Call once at startup. Safe to call when OneSignal isn't configured.
+  /// No-op on web — onesignal_flutter is native-only; web push uses the
+  /// separate OneSignal Web (JS) SDK wired in web/index.html.
   Future<void> init() async {
-    if (!Env.hasOneSignal || _initialized) return;
+    if (kIsWeb || !Env.hasOneSignal || _initialized) return;
     OneSignal.Debug.setLogLevel(
         kDebugMode ? OSLogLevel.warn : OSLogLevel.none);
     OneSignal.initialize(Env.oneSignalAppId);
