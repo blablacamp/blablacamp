@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../responsive/responsive.dart';
@@ -26,12 +27,15 @@ class WebFooter extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('BlaBlaCamp',
-                          style: GoogleFonts.manrope(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.cream,
-                          )),
+                      GestureDetector(
+                        onTap: () => context.go('/'),
+                        child: Text('BlaBlaCamp',
+                            style: GoogleFonts.manrope(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.cream,
+                            )),
+                      ),
                       const SizedBox(height: 12),
                       Text(
                           'Спільнота, що обʼєднує мандрівників для спільних походів Карпатами.',
@@ -44,14 +48,14 @@ class WebFooter extends StatelessWidget {
                   ),
                 ),
                 _FooterCol('Продукт', const [
-                  'Як це працює',
-                  'Пошук походів',
-                  'Стати організатором',
+                  ('Як це працює', '/'),
+                  ('Пошук походів', '/search'),
+                  ('Стати організатором', '/role'),
                 ]),
                 _FooterCol('Спільнота', const [
-                  'Правила',
-                  'Безпека',
-                  'Контакти',
+                  ('Правила', '/rules'),
+                  ('Безпека', '/safety'),
+                  ('Контакти', '/contact'),
                 ]),
               ],
             ),
@@ -73,7 +77,7 @@ class WebFooter extends StatelessWidget {
 class _FooterCol extends StatelessWidget {
   const _FooterCol(this.title, this.links);
   final String title;
-  final List<String> links;
+  final List<(String, String)> links;
 
   @override
   Widget build(BuildContext context) {
@@ -88,16 +92,45 @@ class _FooterCol extends StatelessWidget {
               color: AppColors.accent,
             )),
         const SizedBox(height: 14),
-        for (final l in links)
+        for (final (label, path) in links)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Text(l,
-                style: GoogleFonts.manrope(
-                  fontSize: 14,
-                  color: AppColors.mutedOnDark,
-                )),
+            child: _FooterLink(label: label, path: path),
           ),
       ],
+    );
+  }
+}
+
+class _FooterLink extends StatefulWidget {
+  const _FooterLink({required this.label, required this.path});
+  final String label;
+  final String path;
+
+  @override
+  State<_FooterLink> createState() => _FooterLinkState();
+}
+
+class _FooterLinkState extends State<_FooterLink> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: () => context.go(widget.path),
+        child: Text(widget.label,
+            style: GoogleFonts.manrope(
+              fontSize: 14,
+              color: _hover ? AppColors.cream : AppColors.mutedOnDark,
+              decoration:
+                  _hover ? TextDecoration.underline : TextDecoration.none,
+              decorationColor: AppColors.cream,
+            )),
+      ),
     );
   }
 }

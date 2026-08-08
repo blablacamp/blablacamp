@@ -78,7 +78,7 @@ class SearchWebPage extends StatelessWidget {
                               width: cardW,
                               child: _WebHikeCard(
                                 hike: h,
-                                onTap: () => context.push('/hike', extra: h),
+                                onTap: () => context.go('/hike/${h.id}'),
                               ),
                             ),
                         ],

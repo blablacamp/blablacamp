@@ -126,7 +126,7 @@ class _SearchBar extends StatelessWidget {
               borderRadius: AppShapes.leafOf(14, 6),
               child: InkWell(
                 borderRadius: AppShapes.leafOf(14, 6),
-                onTap: () => context.push('/search'),
+                onTap: () => context.go('/search'),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 28),
                   child: Center(
@@ -258,7 +258,7 @@ class _Gathering extends StatelessWidget {
                       style: GoogleFonts.unbounded(
                           fontSize: 30, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                   TextButton(
-                    onPressed: () => context.push('/search'),
+                    onPressed: () => context.go('/search'),
                     child: Text('Всі походи →',
                         style: GoogleFonts.manrope(
                             fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.accent)),
@@ -276,7 +276,7 @@ class _Gathering extends StatelessWidget {
                       Expanded(
                         child: _LandingCard(
                           hike: hikes[i],
-                          onTap: () => context.push('/hike', extra: hikes[i]),
+                          onTap: () => context.go('/hike/${hikes[i].id}'),
                         ),
                       ),
                       if (i < hikes.length - 1) const SizedBox(width: 20),

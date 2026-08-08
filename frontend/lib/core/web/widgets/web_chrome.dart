@@ -14,17 +14,22 @@ class WebChrome extends StatelessWidget {
     this.scrollable = true,
     this.footer = false,
     this.constrain = true,
+    this.maxContentWidth = Breakpoints.contentMax,
   });
 
   final Widget child;
   final bool scrollable;
   final bool footer;
   final bool constrain;
+  final double maxContentWidth;
 
   @override
   Widget build(BuildContext context) {
     final content = constrain
-        ? MaxWidth(child: Padding(padding: const EdgeInsets.symmetric(vertical: 24), child: child))
+        ? MaxWidth(
+            maxWidth: maxContentWidth,
+            child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24), child: child))
         : child;
 
     if (!scrollable) {

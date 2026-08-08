@@ -38,7 +38,7 @@ class WebNavBar extends StatelessWidget {
         child: Row(
           children: [
             GestureDetector(
-              onTap: () => context.go(loggedIn ? '/home' : '/onboarding'),
+              onTap: () => context.go(loggedIn ? '/home' : '/'),
               child: Text('BlaBlaCamp',
                   style: GoogleFonts.manrope(
                     fontSize: 20,
@@ -55,7 +55,7 @@ class WebNavBar extends StatelessWidget {
             if (loggedIn) ...[
               _PrimaryButton(
                   label: 'Створити похід',
-                  onTap: () => context.push('/create-hike')),
+                  onTap: () => context.go('/create-hike')),
               const SizedBox(width: 12),
               GestureDetector(
                 onTap: () => context.go('/profile'),

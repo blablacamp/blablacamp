@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/responsive/responsive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_shapes.dart';
 import '../data/auth_repository.dart';
@@ -55,14 +56,17 @@ class _AuthViewState extends State<_AuthView> {
 
   @override
   Widget build(BuildContext context) {
+    final desktop = context.isDesktop;
     return Scaffold(
-      backgroundColor: AppColors.cream,
-      appBar: AppBar(
-        backgroundColor: AppColors.cream,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        foregroundColor: AppColors.textPrimary,
-      ),
+      backgroundColor: desktop ? AppColors.surface : AppColors.cream,
+      appBar: desktop
+          ? null
+          : AppBar(
+              backgroundColor: AppColors.cream,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              foregroundColor: AppColors.textPrimary,
+            ),
       body: BlocConsumer<AuthCubit, AuthFormState>(
         listener: (context, state) {
           final messenger = ScaffoldMessenger.of(context);
@@ -73,10 +77,10 @@ class _AuthViewState extends State<_AuthView> {
           }
         },
         builder: (context, state) {
-          return SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-              child: Form(
+          final formBody = SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+                horizontal: desktop ? 32 : 20, vertical: desktop ? 36 : 8),
+            child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,6 +190,27 @@ class _AuthViewState extends State<_AuthView> {
                     ),
                   ],
                 ),
+              ),
+            );
+
+          if (!desktop) return SafeArea(child: formBody);
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Container(
+                margin: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.cream,
+                  borderRadius: AppShapes.leaf,
+                  border: Border.all(color: AppColors.divider),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Color(0x14121719),
+                        blurRadius: 24,
+                        offset: Offset(0, 8)),
+                  ],
+                ),
+                child: formBody,
               ),
             ),
           );

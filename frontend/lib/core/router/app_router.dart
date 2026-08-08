@@ -11,6 +11,7 @@ import '../../features/hikes/data/models/hike.dart';
 import '../../features/hikes/view/create_hike_page.dart';
 import '../../features/hikes/view/hike_details_page.dart';
 import '../../features/hikes/view/hike_details_web.dart';
+import '../../features/info/view/info_page.dart';
 import '../../features/landing/view/landing_page.dart';
 import '../../features/messages/view/messages_page.dart';
 import '../../features/onboarding/view/intro_page.dart';
@@ -27,12 +28,12 @@ import '../web/widgets/web_chrome.dart';
 GoRouter createRouter(AuthRepository auth) {
   // Entry/auth screens; browsing (/search, /hike) is public so web visitors can
   // explore before signing in. Only the app shell + actions require a session.
-  const entryRoutes = {'/onboarding', '/role', '/auth'};
+  const entryRoutes = {'/', '/onboarding', '/role', '/auth'};
   const authOnly = {'/home', '/create-hike', '/favorites', '/my-hikes', '/messages', '/profile'};
   bool needsAuth(String loc) => authOnly.any(loc.startsWith);
 
   return GoRouter(
-    initialLocation: '/onboarding',
+    initialLocation: '/',
     refreshListenable: _GoRouterRefreshStream(auth.onAuthStateChange),
     redirect: (context, state) {
       if (!auth.isConfigured) return null; // preview mode — no gating
@@ -44,11 +45,30 @@ GoRouter createRouter(AuthRepository auth) {
     },
     routes: [
       GoRoute(
+        path: '/',
+        builder: (context, state) => const ResponsiveLayout(
+          mobile: _introBuilder,
+          desktop: _landingBuilder,
+        ),
+      ),
+      GoRoute(
         path: '/onboarding',
         builder: (context, state) => const ResponsiveLayout(
           mobile: _introBuilder,
           desktop: _landingBuilder,
         ),
+      ),
+      GoRoute(
+        path: '/rules',
+        builder: (context, state) => const InfoPage(topic: 'rules'),
+      ),
+      GoRoute(
+        path: '/safety',
+        builder: (context, state) => const InfoPage(topic: 'safety'),
+      ),
+      GoRoute(
+        path: '/contact',
+        builder: (context, state) => const InfoPage(topic: 'contact'),
       ),
       GoRoute(
         path: '/role',
@@ -92,34 +112,42 @@ GoRouter createRouter(AuthRepository auth) {
       ),
       GoRoute(
         path: '/create-hike',
-        builder: (context, state) => const CreateHikePage(),
+        builder: (context, state) => ResponsiveLayout(
+          mobile: (c) => const CreateHikePage(),
+          desktop: (c) => const WebChrome(
+              scrollable: false, maxContentWidth: 720, child: CreateHikePage()),
+        ),
       ),
       GoRoute(
         path: '/favorites',
         builder: (context, state) => ResponsiveLayout(
           mobile: (c) => const FavoritesPage(),
-          desktop: (c) => const WebChrome(scrollable: false, child: FavoritesPage()),
+          desktop: (c) => const WebChrome(
+              scrollable: false, maxContentWidth: 760, child: FavoritesPage()),
         ),
       ),
       GoRoute(
         path: '/my-hikes',
         builder: (context, state) => ResponsiveLayout(
           mobile: (c) => const BackpackPage(),
-          desktop: (c) => const WebChrome(scrollable: false, child: BackpackPage()),
+          desktop: (c) => const WebChrome(
+              scrollable: false, maxContentWidth: 760, child: BackpackPage()),
         ),
       ),
       GoRoute(
         path: '/messages',
         builder: (context, state) => ResponsiveLayout(
           mobile: (c) => const MessagesPage(),
-          desktop: (c) => const WebChrome(scrollable: false, child: MessagesPage()),
+          desktop: (c) => const WebChrome(
+              scrollable: false, maxContentWidth: 760, child: MessagesPage()),
         ),
       ),
       GoRoute(
         path: '/profile',
         builder: (context, state) => ResponsiveLayout(
           mobile: (c) => const ProfilePage(),
-          desktop: (c) => const WebChrome(scrollable: false, child: ProfilePage()),
+          desktop: (c) => const WebChrome(
+              scrollable: false, maxContentWidth: 760, child: ProfilePage()),
         ),
       ),
     ],
