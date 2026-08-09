@@ -35,16 +35,18 @@ class _PublicProfilePageState extends State<PublicProfilePage> {
   }
 
   Future<void> _load() async {
-    final data = await _repo.fetchProfile(widget.userId);
-    final rating = await _repo.fetchUserRating(widget.userId);
-    final reviews = await _repo.fetchReviews(widget.userId);
+    // Load each piece independently so one failure never blocks the page.
+    try {
+      _data = await _repo.fetchProfile(widget.userId);
+    } catch (_) {}
+    try {
+      _rating = await _repo.fetchUserRating(widget.userId);
+    } catch (_) {}
+    try {
+      _reviews = await _repo.fetchReviews(widget.userId);
+    } catch (_) {}
     if (!mounted) return;
-    setState(() {
-      _data = data;
-      _rating = rating;
-      _reviews = reviews;
-      _loading = false;
-    });
+    setState(() => _loading = false);
   }
 
   @override

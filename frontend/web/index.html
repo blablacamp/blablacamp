@@ -41,6 +41,18 @@
 
   <title>BlaBlaCamp — походи Карпатами</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- OneSignal Web Push SDK (v16) -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function (OneSignal) {
+      await OneSignal.init({
+        appId: "e8629160-6025-4820-8bd6-4cf28cac5a23",
+        allowLocalhostAsSecureOrigin: true,
+      });
+    });
+  </script>
   
   
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">

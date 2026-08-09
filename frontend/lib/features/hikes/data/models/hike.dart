@@ -40,6 +40,7 @@ class Hike {
     required this.organizer,
     this.summary,
     this.description,
+    this.legend,
     this.coverUrl,
     this.region,
     this.location,
@@ -61,6 +62,9 @@ class Hike {
   final ProfileRef organizer;
   final String? summary;
   final String? description;
+
+  /// A short Carpathian legend / lore about this place (Галицька фішка).
+  final String? legend;
   final String? coverUrl;
   final String? region;
   final String? location;
@@ -98,6 +102,7 @@ class Hike {
       title: (map['title'] as String?) ?? '',
       summary: map['summary'] as String?,
       description: map['description'] as String?,
+      legend: map['legend'] as String?,
       coverUrl: map['cover_url'] as String?,
       region: map['region'] as String?,
       location: map['location'] as String?,

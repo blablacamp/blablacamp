@@ -11,10 +11,9 @@ import '../../../core/responsive/responsive.dart';
 import '../../../core/widgets/avatar_circle.dart';
 import '../../../core/widgets/hike_cover.dart';
 import '../../../core/widgets/hike_participants.dart';
-import '../../../core/widgets/hike_route_map.dart';
+import '../../../core/widgets/legend_panel.dart';
 import '../../../core/widgets/star_rating.dart';
 import '../data/models/profile_ref.dart';
-import '../data/models/waypoint.dart';
 import '../../favorites/cubit/favorites_cubit.dart';
 import '../../messages/view/chat_page.dart';
 import '../data/hikes_repository.dart';
@@ -75,7 +74,6 @@ class _HikeDetailsPageState extends State<HikeDetailsPage> {
   bool _canReview = false;
   ({double average, int count}) _orgRating = (average: 0, count: 0);
   List<ProfileRef> _members = const [];
-  List<Waypoint> _waypoints = const [];
 
   Hike get hike => widget.hike;
   HikesRepository get _repo => context.read<HikesRepository>();
@@ -93,7 +91,6 @@ class _HikeDetailsPageState extends State<HikeDetailsPage> {
     final canReview =
         await _repo.canReview(subjectId: hike.organizer.id, hikeId: hike.id);
     final members = await _repo.fetchApprovedParticipants(hike.id);
-    final waypoints = await _repo.fetchWaypoints(hike.id);
     if (!mounted) return;
     setState(() {
       _itinerary = days;
@@ -101,7 +98,6 @@ class _HikeDetailsPageState extends State<HikeDetailsPage> {
       _orgRating = rating;
       _canReview = canReview;
       _members = members;
-      _waypoints = waypoints;
     });
   }
 
@@ -195,6 +191,10 @@ class _HikeDetailsPageState extends State<HikeDetailsPage> {
                       )),
                   const SizedBox(height: 24),
                 ],
+                if (hike.legend != null && hike.legend!.trim().isNotEmpty) ...[
+                  LegendPanel(text: hike.legend!),
+                  const SizedBox(height: 24),
+                ],
                 if (hike.highlights.isNotEmpty) ...[
                   const _SectionTitle('Що на маршруті'),
                   const SizedBox(height: 12),
@@ -222,12 +222,6 @@ class _HikeDetailsPageState extends State<HikeDetailsPage> {
                           foregroundColor: AppColors.accent),
                     ),
                   ),
-                ],
-                if (_waypoints.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  const _SectionTitle('Маршрут на карті'),
-                  const SizedBox(height: 12),
-                  HikeRouteMap(waypoints: _waypoints),
                 ],
                 const SizedBox(height: 24),
                 const _SectionTitle('Хто вже йде'),
