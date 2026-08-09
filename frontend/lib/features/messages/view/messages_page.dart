@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/hike_list_tile.dart';
 import '../../hikes/data/hikes_repository.dart';
 import '../cubit/conversations_cubit.dart';
+import '../cubit/unread_cubit.dart';
 import 'chat_page.dart';
 
 /// "Повідомлення" tab — one conversation per hike you're a member of.
@@ -60,15 +61,21 @@ class _MessagesView extends StatelessWidget {
                               subtitle: 'Чат групи · ${hike.region ?? ''}',
                               trailing: const Icon(Icons.chevron_right,
                                   color: AppColors.textSecondary),
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => ChatPage(
-                                    hikeId: hike.id,
-                                    title: hike.title,
-                                    repository: context.read<HikesRepository>(),
+                              onTap: () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => ChatPage(
+                                      hikeId: hike.id,
+                                      title: hike.title,
+                                      repository:
+                                          context.read<HikesRepository>(),
+                                    ),
                                   ),
-                                ),
-                              ),
+                                );
+                                if (context.mounted) {
+                                  context.read<UnreadCubit>().refresh();
+                                }
+                              },
                             );
                           },
                         ),

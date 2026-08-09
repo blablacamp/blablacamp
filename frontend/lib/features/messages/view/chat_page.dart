@@ -10,6 +10,7 @@ import '../../../core/theme/app_shapes.dart';
 import '../../../core/widgets/avatar_circle.dart';
 import '../../hikes/data/hikes_repository.dart';
 import '../../hikes/data/models/message.dart';
+import '../../hikes/data/models/profile_ref.dart';
 import '../cubit/chat_cubit.dart';
 
 /// Per-hike group chat.
@@ -58,12 +59,67 @@ class _ChatView extends StatefulWidget {
 class _ChatViewState extends State<_ChatView> {
   final _controller = TextEditingController();
   final _scroll = ScrollController();
+  List<ProfileRef> _participants = const [];
+  List<ProfileRef> _mentionMatches = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    widget.repository.fetchApprovedParticipants(widget.hikeId).then((p) {
+      if (mounted) setState(() => _participants = p);
+    });
+  }
 
   @override
   void dispose() {
     _controller.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// If the caret sits inside a trailing "@query" token, returns the query.
+  String? _mentionQuery() {
+    final sel = _controller.selection;
+    if (!sel.isValid || !sel.isCollapsed) return null;
+    final upto = _controller.text.substring(0, sel.baseOffset);
+    final at = upto.lastIndexOf('@');
+    if (at < 0) return null;
+    // '@' must start a word and have no whitespace after it.
+    if (at > 0 && !RegExp(r'\s').hasMatch(upto[at - 1])) return null;
+    final query = upto.substring(at + 1);
+    if (query.contains(RegExp(r'\s'))) return null;
+    return query;
+  }
+
+  void _onComposerChanged(String _) {
+    context.read<ChatCubit>().notifyTyping();
+    final q = _mentionQuery();
+    final matches = q == null
+        ? <ProfileRef>[]
+        : _participants
+            .where((p) =>
+                p.displayName.toLowerCase().contains(q.toLowerCase()))
+            .take(5)
+            .toList();
+    setState(() => _mentionMatches = matches);
+  }
+
+  void _insertMention(ProfileRef p) {
+    final sel = _controller.selection;
+    final text = _controller.text;
+    final upto = text.substring(0, sel.baseOffset);
+    final at = upto.lastIndexOf('@');
+    if (at < 0) return;
+    final name = p.displayName.split(' ').first;
+    final before = text.substring(0, at);
+    final after = text.substring(sel.baseOffset);
+    final mention = '@$name ';
+    final inserted = '$before$mention$after';
+    _controller.value = TextEditingValue(
+      text: inserted,
+      selection: TextSelection.collapsed(offset: before.length + mention.length),
+    );
+    setState(() => _mentionMatches = const []);
   }
 
   void _jumpToBottom() {
@@ -291,6 +347,8 @@ class _ChatViewState extends State<_ChatView> {
               },
             ),
           ),
+          if (_mentionMatches.isNotEmpty)
+            _MentionStrip(matches: _mentionMatches, onPick: _insertMention),
           BlocBuilder<ChatCubit, ChatState>(
             buildWhen: (a, b) => a.typingName != b.typingName,
             builder: (context, state) => _TypingIndicator(name: state.typingName),
@@ -299,11 +357,41 @@ class _ChatViewState extends State<_ChatView> {
             controller: _controller,
             onSend: _send,
             onAttach: _openAttachMenu,
-            onTyping: () => context.read<ChatCubit>().notifyTyping(),
+            onChanged: _onComposerChanged,
           ),
         ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _MentionStrip extends StatelessWidget {
+  const _MentionStrip({required this.matches, required this.onPick});
+  final List<ProfileRef> matches;
+  final ValueChanged<ProfileRef> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.cream,
+      constraints: const BoxConstraints(maxHeight: 180),
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          for (final p in matches)
+            ListTile(
+              dense: true,
+              leading: AvatarCircle(profile: p, size: 30),
+              title: Text('@${p.displayName}',
+                  style: GoogleFonts.manrope(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary)),
+              onTap: () => onPick(p),
+            ),
+        ],
       ),
     );
   }
@@ -444,8 +532,7 @@ class _Bubble extends StatelessWidget {
           ],
         );
       case MessageKind.text:
-        return Text(message.body,
-            style: GoogleFonts.manrope(fontSize: 14, color: fg));
+        return _MentionText(text: message.body, mine: mine);
     }
   }
 
@@ -466,17 +553,50 @@ class _Bubble extends StatelessWidget {
   }
 }
 
+/// Renders message text with @mentions highlighted.
+class _MentionText extends StatelessWidget {
+  const _MentionText({required this.text, required this.mine});
+  final String text;
+  final bool mine;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = mine ? AppColors.cream : AppColors.textPrimary;
+    final base = GoogleFonts.manrope(fontSize: 14, color: fg);
+    final spans = <TextSpan>[];
+    final re = RegExp(r'@[\wА-Яа-яЇїІіЄєҐґ]+');
+    var last = 0;
+    for (final m in re.allMatches(text)) {
+      if (m.start > last) {
+        spans.add(TextSpan(text: text.substring(last, m.start), style: base));
+      }
+      spans.add(TextSpan(
+        text: m.group(0),
+        style: base.copyWith(
+          fontWeight: FontWeight.w700,
+          color: mine ? AppColors.cream : AppColors.accent,
+        ),
+      ));
+      last = m.end;
+    }
+    if (last < text.length) {
+      spans.add(TextSpan(text: text.substring(last), style: base));
+    }
+    return RichText(text: TextSpan(children: spans));
+  }
+}
+
 class _Composer extends StatelessWidget {
   const _Composer({
     required this.controller,
     required this.onSend,
     required this.onAttach,
-    required this.onTyping,
+    required this.onChanged,
   });
   final TextEditingController controller;
   final VoidCallback onSend;
   final VoidCallback onAttach;
-  final VoidCallback onTyping;
+  final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -498,7 +618,7 @@ class _Composer extends StatelessWidget {
             child: TextField(
               controller: controller,
               textInputAction: TextInputAction.send,
-              onChanged: (_) => onTyping(),
+              onChanged: onChanged,
               onSubmitted: (_) => onSend(),
               minLines: 1,
               maxLines: 4,

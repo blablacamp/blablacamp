@@ -445,6 +445,68 @@ class HikesRepository {
     });
   }
 
+  /// Pushes a "new message" notification to the other members of a hike
+  /// (approved participants + organizer, excluding the sender). Best-effort:
+  /// silently ignores failures (e.g. OneSignal not configured).
+  Future<void> notifyNewMessage(
+    String hikeId, {
+    required String senderName,
+    required String preview,
+  }) async {
+    final client = _client;
+    final uid = client?.auth.currentUser?.id;
+    if (client == null || uid == null) return;
+    try {
+      final members = await client
+          .from('hike_participants')
+          .select('user_id')
+          .eq('hike_id', hikeId)
+          .eq('status', 'approved');
+      final hike = await client
+          .from('hikes')
+          .select('organizer_id, title')
+          .eq('id', hikeId)
+          .maybeSingle();
+      final ids = <String>{
+        for (final m in members) m['user_id'] as String,
+        if (hike?['organizer_id'] != null) hike!['organizer_id'] as String,
+      }..remove(uid);
+      if (ids.isEmpty) return;
+      await client.functions.invoke('notify', body: {
+        'userIds': ids.toList(),
+        'title': (hike?['title'] as String?) ?? 'Новий похід',
+        'message': '$senderName: $preview',
+        'data': {'hikeId': hikeId},
+      });
+    } catch (_) {
+      // best-effort
+    }
+  }
+
+  /// Marks a hike's chat as read up to now for the current user.
+  Future<void> markChatRead(String hikeId) async {
+    final client = _client;
+    final uid = client?.auth.currentUser?.id;
+    if (client == null || uid == null) return;
+    await client.from('chat_reads').upsert({
+      'user_id': uid,
+      'hike_id': hikeId,
+      'last_read_at': DateTime.now().toUtc().toIso8601String(),
+    });
+  }
+
+  /// Number of conversations with unread messages (for the nav badge).
+  Future<int> fetchUnreadCount() async {
+    final client = _client;
+    if (client == null || client.auth.currentUser == null) return 0;
+    try {
+      final res = await client.rpc('unread_conversation_count');
+      return (res as int?) ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   /// Broadcasts a lightweight "typing" ping on the hike channel.
   void broadcastTyping(RealtimeChannel channel) {
     channel.sendBroadcastMessage(

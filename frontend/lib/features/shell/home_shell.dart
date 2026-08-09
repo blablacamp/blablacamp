@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../backpack/view/backpack_page.dart';
 import '../favorites/view/favorites_page.dart';
 import '../home/view/home_page.dart';
+import '../messages/cubit/unread_cubit.dart';
 import '../messages/view/messages_page.dart';
 import '../profile/view/profile_page.dart';
 
@@ -92,13 +93,20 @@ class _HomeShellState extends State<HomeShell> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: (i) {
+          setState(() => _index = i);
+          if (i == 3) context.read<UnreadCubit>().refresh();
+        },
         destinations: [
-          for (final t in _tabs)
+          for (var i = 0; i < _tabs.length; i++)
             NavigationDestination(
-              icon: Icon(t.icon),
-              selectedIcon: Icon(t.selectedIcon),
-              label: t.label,
+              icon: _tabs[i].label == 'Повідомлення'
+                  ? _UnreadBadge(child: Icon(_tabs[i].icon))
+                  : Icon(_tabs[i].icon),
+              selectedIcon: _tabs[i].label == 'Повідомлення'
+                  ? _UnreadBadge(child: Icon(_tabs[i].selectedIcon))
+                  : Icon(_tabs[i].selectedIcon),
+              label: _tabs[i].label,
             ),
         ],
       ),
@@ -111,4 +119,21 @@ class _TabSpec {
   final String label;
   final IconData icon;
   final IconData selectedIcon;
+}
+
+/// Wraps an icon with the unread-conversations count badge.
+class _UnreadBadge extends StatelessWidget {
+  const _UnreadBadge({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = context.watch<UnreadCubit>().state;
+    return Badge(
+      isLabelVisible: count > 0,
+      label: Text('$count'),
+      backgroundColor: AppColors.accent,
+      child: child,
+    );
+  }
 }

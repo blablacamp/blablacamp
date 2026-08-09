@@ -9,6 +9,7 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/favorites/cubit/favorites_cubit.dart';
 import 'features/hikes/data/hikes_repository.dart';
+import 'features/messages/cubit/unread_cubit.dart';
 
 class BlablacampApp extends StatelessWidget {
   const BlablacampApp({
@@ -32,8 +33,11 @@ class BlablacampApp extends StatelessWidget {
         RepositoryProvider.value(value: hikesRepository),
         RepositoryProvider.value(value: notifications),
       ],
-      child: BlocProvider(
-        create: (context) => FavoritesCubit(hikesRepository),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (context) => FavoritesCubit(hikesRepository)),
+          BlocProvider(create: (context) => UnreadCubit(hikesRepository)),
+        ],
         child: MaterialApp.router(
           title: 'Blablacamp',
           debugShowCheckedModeBanner: false,

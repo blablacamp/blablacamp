@@ -66,6 +66,8 @@ class ChatCubit extends Cubit<ChatState> {
     try {
       final msgs = await _repo.fetchMessages(hikeId);
       emit(state.copyWith(status: ChatStatus.ready, messages: msgs));
+      // Opening/reading the chat clears its unread state.
+      unawaited(_repo.markChatRead(hikeId));
     } catch (_) {
       if (state.messages.isEmpty) emit(state.copyWith(status: ChatStatus.error));
     }
@@ -99,6 +101,8 @@ class ChatCubit extends Cubit<ChatState> {
       await _repo.sendMessage(hikeId, text);
       final msgs = await _repo.fetchMessages(hikeId);
       emit(state.copyWith(sending: false, messages: msgs));
+      unawaited(_repo.notifyNewMessage(hikeId,
+          senderName: _repo.currentUserName, preview: text));
     } catch (_) {
       emit(state.copyWith(sending: false));
     }
@@ -123,6 +127,9 @@ class ChatCubit extends Cubit<ChatState> {
       );
       final msgs = await _repo.fetchMessages(hikeId);
       emit(state.copyWith(sending: false, messages: msgs));
+      unawaited(_repo.notifyNewMessage(hikeId,
+          senderName: _repo.currentUserName,
+          preview: isImage ? 'надіслав(-ла) фото 📷' : 'надіслав(-ла) файл 📎'));
     } catch (_) {
       emit(state.copyWith(sending: false));
     }
@@ -135,6 +142,9 @@ class ChatCubit extends Cubit<ChatState> {
       await _repo.sendContactMessage(hikeId, name: name, handle: handle);
       final msgs = await _repo.fetchMessages(hikeId);
       emit(state.copyWith(sending: false, messages: msgs));
+      unawaited(_repo.notifyNewMessage(hikeId,
+          senderName: _repo.currentUserName,
+          preview: 'поділив(-ла)ся контактом 👤'));
     } catch (_) {
       emit(state.copyWith(sending: false));
     }

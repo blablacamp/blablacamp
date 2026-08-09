@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../features/auth/data/auth_repository.dart';
+import '../../../features/messages/cubit/unread_cubit.dart';
 import '../../brand/app_logo.dart';
 import '../../responsive/responsive.dart';
 import '../../theme/app_colors.dart';
@@ -44,7 +45,15 @@ class WebNavBar extends StatelessWidget {
             ),
             const SizedBox(width: 40),
             for (final (label, path) in links) ...[
-              _NavLink(label, fg, () => context.go(path)),
+              if (label == 'Повідомлення')
+                Badge(
+                  isLabelVisible: context.watch<UnreadCubit>().state > 0,
+                  label: Text('${context.watch<UnreadCubit>().state}'),
+                  backgroundColor: AppColors.accent,
+                  child: _NavLink(label, fg, () => context.go(path)),
+                )
+              else
+                _NavLink(label, fg, () => context.go(path)),
               const SizedBox(width: 20),
             ],
             const Spacer(),
