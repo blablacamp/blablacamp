@@ -364,11 +364,17 @@ class _BookingCard extends StatelessWidget {
                               : 'з особи',
               style: GoogleFonts.manrope(fontSize: 13, color: AppColors.textSecondary)),
           const SizedBox(height: 20),
-          SizedBox(
+          Container(
             width: double.infinity,
             height: 52,
+            decoration: BoxDecoration(
+              gradient: blocked ? null : AppColors.accentGradient,
+              color: blocked ? AppColors.divider : null,
+              borderRadius: AppShapes.leaf,
+              boxShadow: blocked ? null : AppColors.softShadow,
+            ),
             child: Material(
-              color: blocked ? AppColors.divider : AppColors.accent,
+              color: Colors.transparent,
               borderRadius: AppShapes.leaf,
               child: InkWell(
                 borderRadius: AppShapes.leaf,

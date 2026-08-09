@@ -765,10 +765,20 @@ class _StickyBar extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: SizedBox(
+            child: Container(
               height: 48,
+              decoration: BoxDecoration(
+                gradient: (color == AppColors.accent)
+                    ? AppColors.accentGradient
+                    : null,
+                color: (color == AppColors.accent) ? null : color,
+                borderRadius: AppShapes.leaf,
+                boxShadow: (color == AppColors.accent)
+                    ? AppColors.softShadow
+                    : null,
+              ),
               child: Material(
-                color: color,
+                color: Colors.transparent,
                 borderRadius: AppShapes.leaf,
                 child: InkWell(
                   borderRadius: AppShapes.leaf,

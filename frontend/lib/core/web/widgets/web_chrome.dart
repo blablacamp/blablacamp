@@ -41,16 +41,28 @@ class WebChrome extends StatelessWidget {
       );
     }
 
+    // Frosted nav floats over the scroll content so it faintly shows through.
+    const navHeight = 68.0;
     return Scaffold(
       backgroundColor: AppColors.cream,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const WebNavBar(),
-            content,
-            if (footer) const WebFooter(),
-          ],
-        ),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: navHeight),
+                content,
+                if (footer) const WebFooter(),
+              ],
+            ),
+          ),
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: WebNavBar(),
+          ),
+        ],
       ),
     );
   }

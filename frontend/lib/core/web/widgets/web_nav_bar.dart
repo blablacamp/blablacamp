@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -33,8 +35,23 @@ class WebNavBar extends StatelessWidget {
       ],
     ];
 
-    return Container(
-      color: onDark ? Colors.transparent : AppColors.cream,
+    // Frosted, translucent bar on light pages so content faintly shows through
+    // as you scroll under it; fully transparent when over a dark hero.
+    return ClipRect(
+      child: BackdropFilter(
+        filter: onDark
+            ? ImageFilter.blur(sigmaX: 0, sigmaY: 0)
+            : ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+      decoration: BoxDecoration(
+        color: onDark
+            ? Colors.transparent
+            : AppColors.cream.withValues(alpha: 0.72),
+        border: onDark
+            ? null
+            : const Border(
+                bottom: BorderSide(color: Color(0x14332017))),
+      ),
       padding: const EdgeInsets.symmetric(vertical: 14),
       child: MaxWidth(
         child: Row(
@@ -77,6 +94,8 @@ class WebNavBar extends StatelessWidget {
                   label: 'Створити похід', onTap: () => context.go('/role')),
             ],
           ],
+        ),
+      ),
         ),
       ),
     );
